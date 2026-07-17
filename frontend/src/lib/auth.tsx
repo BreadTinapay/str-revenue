@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { clearToken, getToken, login as apiLogin, setToken } from "./api";
 
@@ -20,7 +20,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<string | null>(() => localStorage.getItem(ROLE_KEY));
   const [email, setEmail] = useState<string | null>(() => localStorage.getItem(EMAIL_KEY));
 
-  async function login(email: string, password: string) {
+  const login = useCallback(async (email: string, password: string) => {
     const { access_token, role } = await apiLogin(email, password);
     setToken(access_token);
     localStorage.setItem(ROLE_KEY, role);
@@ -28,22 +28,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsAuthenticated(true);
     setRole(role);
     setEmail(email);
-  }
+  }, []);
 
-  function logout() {
+  const logout = useCallback(() => {
     clearToken();
     localStorage.removeItem(ROLE_KEY);
     localStorage.removeItem(EMAIL_KEY);
     setIsAuthenticated(false);
     setRole(null);
     setEmail(null);
-  }
+  }, []);
 
-  return (
-    <AuthContext.Provider value={{ isAuthenticated, role, email, login, logout }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ isAuthenticated, role, email, login, logout }),
+    [isAuthenticated, role, email, login, logout],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {

@@ -1,4 +1,7 @@
 import logging
+from collections import defaultdict
+
+from sqlalchemy import desc
 
 from app.db import SessionLocal
 from app.dedup.matcher import match_and_merge
@@ -24,14 +27,30 @@ def run_deduplication(city: str, state: str) -> int:
         )
         pending = [listing for listing in listings if listing.id not in already_processed_ids]
 
+        if not pending:
+            logger.info("Dedup run for %s, %s: no pending listings", city, state)
+            return 0
+
+        pending_ids = [listing.id for listing in pending]
+
+        contact_rows = (
+            db.query(Contact)
+            .filter(Contact.market_listing_id.in_(pending_ids))
+            .order_by(desc(Contact.enriched_at))
+            .all()
+        )
+
+        latest_contact: dict = {}
+        for contact in contact_rows:
+            if contact.market_listing_id not in latest_contact:
+                latest_contact[contact.market_listing_id] = contact
+
+        listing_map = {listing.id: listing for listing in pending}
+
         processed = 0
-        for listing in pending:
-            contact = (
-                db.query(Contact)
-                .filter(Contact.market_listing_id == listing.id)
-                .order_by(Contact.enriched_at.desc())
-                .first()
-            )
+        for listing_id in pending_ids:
+            listing = listing_map[listing_id]
+            contact = latest_contact.get(listing_id)
             match_and_merge(db, listing, contact)
             processed += 1
             db.commit()

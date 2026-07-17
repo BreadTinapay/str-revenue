@@ -205,14 +205,19 @@ export function getDedupJob(jobId: string): Promise<JobStatus> {
   return request(`/leads/dedup/jobs/${jobId}`);
 }
 
-export async function pollJob(getJob: (id: string) => Promise<JobStatus>, jobId: string): Promise<JobStatus> {
-  while (true) {
+export async function pollJob(
+  getJob: (id: string) => Promise<JobStatus>,
+  jobId: string,
+  { maxAttempts = 150, intervalMs = 2000 } = {},
+): Promise<JobStatus> {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const job = await getJob(jobId);
     if (job.status === "finished" || job.status === "failed" || job.status === "not_found") {
       return job;
     }
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
+  return { status: "failed", result: "Polling timeout exceeded" };
 }
 
 export interface Campaign {

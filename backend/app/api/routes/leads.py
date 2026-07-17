@@ -31,13 +31,18 @@ def _last_contacted_map(db: Session, lead_ids: list) -> dict:
 
 def _suppression_map(db: Session, emails: list[str]) -> dict:
     """Maps lowercase email -> reason for every email in the suppression list
-    that matches one of the given (already-lowercased) addresses.
+    that matches one of the given addresses. Filters in SQL instead of loading
+    the entire table.
     """
     lowered = {e.lower() for e in emails if e}
     if not lowered:
         return {}
-    rows = db.query(SuppressionEntry.email, SuppressionEntry.reason).all()
-    return {email.lower(): reason for email, reason in rows if email.lower() in lowered}
+    rows = (
+        db.query(SuppressionEntry.email, SuppressionEntry.reason)
+        .filter(func.lower(SuppressionEntry.email).in_(lowered))
+        .all()
+    )
+    return {email.lower(): reason for email, reason in rows}
 
 
 def _to_lead_out(lead: Lead, last_contacted_at, suppression: dict | None = None) -> LeadOut:

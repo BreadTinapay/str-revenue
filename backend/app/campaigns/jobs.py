@@ -6,8 +6,7 @@ from datetime import datetime
 from app.campaigns.compose import assert_compliant, compose_email
 from app.campaigns.providers.base import EmailSendError
 from app.campaigns.providers.factory import get_email_provider
-from app.campaigns.suppression import is_suppressed
-from app.campaigns.targeting import excluded_lead_ids, matching_leads_query
+from app.campaigns.targeting import excluded_lead_ids, matching_leads_query, suppressed_emails_lower
 from app.config import settings
 from app.db import SessionLocal
 from app.models import Campaign, CampaignSend
@@ -40,8 +39,10 @@ def send_campaign(campaign_id: str) -> dict:
 
             leads = matching_leads_query(db, campaign.target_filter).all()
             excluded_ids = excluded_lead_ids(db, campaign.id)
+            suppressed_set = suppressed_emails_lower(db, [lead.best_email for lead in leads])
             provider = get_email_provider()
 
+            send_rows = []
             for lead in leads:
                 unsubscribe_token = uuid.uuid4().hex
                 send_row = CampaignSend(
@@ -54,15 +55,13 @@ def send_campaign(campaign_id: str) -> dict:
 
                 if lead.id in excluded_ids:
                     send_row.status = "excluded"
-                    db.add(send_row)
-                    db.commit()
+                    send_rows.append(send_row)
                     excluded_count += 1
                     continue
 
-                if is_suppressed(db, lead.best_email):
+                if lead.best_email.lower() in suppressed_set:
                     send_row.status = "suppressed"
-                    db.add(send_row)
-                    db.commit()
+                    send_rows.append(send_row)
                     suppressed += 1
                     continue
 
@@ -97,9 +96,11 @@ def send_campaign(campaign_id: str) -> dict:
                     failed += 1
                     logger.exception("Send failed for %s", lead.best_email)
 
-                db.add(send_row)
-                db.commit()
+                send_rows.append(send_row)
                 time.sleep(DELAY_BETWEEN_SENDS_SECONDS)
+
+            db.bulk_save_objects(send_rows)
+            db.commit()
 
             campaign.status = "completed"
             db.commit()

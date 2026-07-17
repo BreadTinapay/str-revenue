@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Loader2, MapPin, Plus, X, XCircle } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -51,11 +51,20 @@ export default function DiscoverPage() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const [debouncedCityQuery, setDebouncedCityQuery] = useState("");
+
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedCityQuery(cityQuery), 300);
+    return () => clearTimeout(debounceRef.current);
+  }, [cityQuery]);
+
   const { data: states } = useQuery({ queryKey: ["us-states"], queryFn: fetchStates });
 
   const { data: cityOptions } = useQuery({
-    queryKey: ["us-cities", stateCode, cityQuery],
-    queryFn: () => fetchCities(stateCode, cityQuery || undefined),
+    queryKey: ["us-cities", stateCode, debouncedCityQuery],
+    queryFn: () => fetchCities(stateCode, debouncedCityQuery || undefined),
     enabled: Boolean(stateCode),
   });
 

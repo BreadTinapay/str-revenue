@@ -78,7 +78,7 @@ def list_campaign_targets(campaign_id: str, db: Session = Depends(get_db)):
 
     leads = matching_leads_query(db, campaign.target_filter).order_by(Lead.canonical_name).all()
     excluded = excluded_lead_ids(db, campaign.id)
-    suppressed = suppressed_emails_lower(db)
+    suppressed = suppressed_emails_lower(db, [lead.best_email for lead in leads])
 
     return [
         CampaignTargetLeadOut(

@@ -10,6 +10,8 @@ import { useEffect } from "react";
  */
 export function useScrollLockGuard() {
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
+
     const interval = setInterval(() => {
       const isLocked = document.body.style.pointerEvents === "none";
       const hasOpenOverlay = document.querySelector('[data-state="open"]') !== null;

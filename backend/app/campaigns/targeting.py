@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from sqlalchemy.orm import Query, Session
 
 from app.models import CampaignExclusion, Lead, SuppressionEntry
@@ -32,17 +33,33 @@ def excluded_lead_ids(db: Session, campaign_id) -> set:
     }
 
 
-def suppressed_emails_lower(db: Session) -> set:
+def suppressed_emails_lower(db: Session, emails: list[str] | None = None) -> set:
+    """Return suppressed emails as a set. If emails is provided, only check
+    those specific emails (much faster for targeted lookups).
+    """
+    if emails:
+        lowered = {e.lower() for e in emails if e}
+        if not lowered:
+            return set()
+        return {
+            row[0].lower()
+            for row in db.query(SuppressionEntry.email)
+            .filter(func.lower(SuppressionEntry.email).in_(lowered))
+            .all()
+        }
     return {row[0].lower() for row in db.query(SuppressionEntry.email).all()}
 
 
 def sendable_lead_count(db: Session, target_filter: dict | None, campaign_id) -> int:
     """How many leads will actually receive an email if sent right now —
     matches the filter, not manually excluded, not suppressed.
+    Uses SQL count instead of loading all lead objects.
     """
-    leads = matching_leads_query(db, target_filter).all()
-    excluded = excluded_lead_ids(db, campaign_id)
-    suppressed = suppressed_emails_lower(db)
-    return sum(
-        1 for lead in leads if lead.id not in excluded and lead.best_email.lower() not in suppressed
-    )
+    from sqlalchemy import func as sqlfunc
+
+    query = matching_leads_query(db, target_filter)
+    query = query.filter(~Lead.id.in_(db.query(CampaignExclusion.lead_id).filter(CampaignExclusion.campaign_id == campaign_id)))
+    query = query.filter(sqlfunc.lower(Lead.best_email).notin_(
+        db.query(sqlfunc.lower(SuppressionEntry.email))
+    ))
+    return query.count()
