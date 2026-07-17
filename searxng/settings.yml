@@ -1,0 +1,14 @@
+use_default_settings: true
+
+general:
+  instance_name: "str-revenue-searxng"
+
+server:
+  secret_key: "4e7e39fc3a6585e4233f4ec319636755f1a8f83abb40cd41b66ec54cf8e3f075"
+  limiter: false
+  image_proxy: false
+
+search:
+  formats:
+    - html
+    - json
