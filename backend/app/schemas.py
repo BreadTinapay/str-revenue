@@ -9,6 +9,59 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class UserOut(BaseModel):
+    id: UUID
+    email: str
+    role: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class UserCreateRequest(BaseModel):
+    email: str
+    password: str
+    role: str = "viewer"
+
+
+class UserRoleUpdateRequest(BaseModel):
+    role: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class ResetPasswordRequest(BaseModel):
+    new_password: str
+
+
+class AppSettingsOut(BaseModel):
+    company_physical_address: str
+    email_from_name: str
+    email_from_address: str
+    email_reply_to: str | None
+
+
+class AppSettingsUpdateRequest(BaseModel):
+    company_physical_address: str
+    email_from_name: str
+    email_from_address: str
+    email_reply_to: str | None = None
+
+
+class AuditLogEntryOut(BaseModel):
+    id: UUID
+    actor_email: str | None
+    action: str
+    entity_type: str | None
+    entity_id: str | None
+    details: dict | None
+    created_at: datetime
+
+
 class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -58,6 +111,9 @@ class LeadOut(BaseModel):
     best_website: str | None
     best_confidence_score: str
     listing_count: int
+    last_contacted_at: datetime | None = None
+    is_suppressed: bool = False
+    suppression_reason: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -137,9 +193,22 @@ class CampaignOut(BaseModel):
     status: str
     scheduled_at: datetime | None
     created_at: datetime
+    matching_lead_count: int = 0
 
     class Config:
         from_attributes = True
+
+
+class CampaignTargetLeadOut(BaseModel):
+    id: UUID
+    canonical_name: str
+    city: str
+    state: str
+    best_email: str | None
+    best_confidence_score: str
+    excluded: bool
+    is_suppressed: bool
+    suppression_reason: str | None = None
 
 
 class CampaignSendOut(BaseModel):
@@ -151,6 +220,20 @@ class CampaignSendOut(BaseModel):
     provider_message_id: str | None
     error_message: str | None
     sent_at: datetime | None
+
+    class Config:
+        from_attributes = True
+
+
+class LeadSendHistoryEntryOut(BaseModel):
+    id: UUID
+    campaign_id: UUID
+    campaign_name: str
+    subject: str
+    status: str
+    error_message: str | None
+    sent_at: datetime | None
+    created_at: datetime
 
     class Config:
         from_attributes = True

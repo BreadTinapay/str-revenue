@@ -64,19 +64,27 @@ class AirbnbSearchExtractor(ListingExtractor):
                     jittered_delay()
                     page.goto(url, wait_until="domcontentloaded", timeout=30000)
 
-                    if _looks_blocked(page):
-                        logger.warning(
-                            "Possible block/CAPTCHA detected for %s, %s (page %d) — stopping run early",
-                            city,
-                            state,
-                            page_num,
-                        )
-                        break
-
+                    # Listing cards render client-side after hydration, well after
+                    # domcontentloaded — checking for a block *before* waiting for
+                    # them here would flag nearly every normal page load as blocked
+                    # (confirmed: this was a real bug, not city-specific flakiness).
+                    # Only treat it as inconclusive/blocked once the cards genuinely
+                    # never show up within a generous timeout.
                     try:
                         page.wait_for_selector(CARD_SELECTOR, timeout=15000)
                     except Exception:
-                        logger.info("No listing cards appeared on page %d, stopping pagination", page_num)
+                        if _looks_blocked(page):
+                            logger.warning(
+                                "Possible block detected for %s, %s (page %d) — stopping run early",
+                                city,
+                                state,
+                                page_num,
+                            )
+                        else:
+                            logger.info(
+                                "No listing cards appeared on page %d (market may have no results) — stopping pagination",
+                                page_num,
+                            )
                         break
 
                     _load_all_cards(page)
@@ -101,11 +109,15 @@ class AirbnbSearchExtractor(ListingExtractor):
 
 
 def _looks_blocked(page: Page) -> bool:
+    """Best-effort guess at *why* no cards appeared. Only called after the
+    card selector has already timed out, so this doesn't gate extraction —
+    it only affects the log message. Deliberately avoids a bare "captcha"
+    substring match: Airbnb ships a "disable_google_recaptcha" config flag
+    on every single page load, which made that check fire constantly on
+    completely normal pages.
+    """
     content = page.content().lower()
-    # Keyword match alone is noisy (e.g. Airbnb ships a "disable_google_recaptcha"
-    # config flag on every page); only trust it when the listing grid never shows up.
-    has_captcha_wall = ("captcha" in content and "card-container" not in content) or "are you a human" in content
-    return has_captcha_wall or "access denied" in content
+    return "are you a human" in content or "access denied" in content or "verify you're human" in content
 
 
 def _load_all_cards(page: Page) -> None:

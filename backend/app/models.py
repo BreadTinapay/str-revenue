@@ -149,6 +149,20 @@ class Campaign(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
+class CampaignExclusion(Base):
+    """Leads manually excluded from a specific campaign — distinct from global
+    suppression: an exclusion here only applies to this one campaign, while a
+    SuppressionEntry blocks a send everywhere.
+    """
+
+    __tablename__ = "campaign_exclusions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    campaign_id = Column(UUID(as_uuid=True), ForeignKey("campaigns.id"), nullable=False, index=True)
+    lead_id = Column(UUID(as_uuid=True), ForeignKey("leads.id"), nullable=False, index=True)
+    excluded_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 class CampaignSend(Base):
     """One row per lead targeted by a campaign — the audit trail of what was
     (or wasn't) sent, and why.
@@ -169,6 +183,41 @@ class CampaignSend(Base):
 
     sent_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class AppSettings(Base):
+    """Single-row table for settings an admin can change at runtime without a
+    redeploy — currently the CAN-SPAM physical address and sender identity.
+    Falls back to env-configured defaults (app/config.py) wherever a column
+    here is null, so an empty table is still a valid, working state.
+    """
+
+    __tablename__ = "app_settings"
+
+    id = Column(Integer, primary_key=True, default=1)
+    company_physical_address = Column(String, nullable=True)
+    email_from_name = Column(String, nullable=True)
+    email_from_address = Column(String, nullable=True)
+    email_reply_to = Column(String, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class AuditLog(Base):
+    """Who did what, when — created once a second real user joins the
+    platform and account actions/sends need to be attributable, not just
+    inferred from timestamps.
+    """
+
+    __tablename__ = "audit_log"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    actor_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+    action = Column(String, nullable=False)  # e.g. "user.create" | "campaign.send" | "lead.exclude"
+    entity_type = Column(String, nullable=True)  # e.g. "user" | "campaign" | "lead"
+    entity_id = Column(String, nullable=True)
+    details = Column(JSONB, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
 
 class EmailEvent(Base):

@@ -3,11 +3,19 @@ import { ArrowLeft, ExternalLink, Globe, Mail, Phone } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import ConfidenceBadge from "../components/ConfidenceBadge";
 import LeadAvatar from "../components/LeadAvatar";
+import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Separator } from "../components/ui/separator";
 import { Skeleton } from "../components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
-import { fetchLeadDetail } from "../lib/api";
+import { fetchLeadDetail, fetchLeadSendHistory } from "../lib/api";
+
+const STATUS_VARIANT: Record<string, "success" | "warning" | "muted"> = {
+  sent: "success",
+  failed: "warning",
+  suppressed: "muted",
+  pending: "muted",
+};
 
 export default function LeadDetailPage() {
   const { leadId } = useParams<{ leadId: string }>();
@@ -15,6 +23,12 @@ export default function LeadDetailPage() {
   const { data: lead, isLoading, isError } = useQuery({
     queryKey: ["lead", leadId],
     queryFn: () => fetchLeadDetail(leadId!),
+    enabled: Boolean(leadId),
+  });
+
+  const { data: sendHistory } = useQuery({
+    queryKey: ["lead-send-history", leadId],
+    queryFn: () => fetchLeadSendHistory(leadId!),
     enabled: Boolean(leadId),
   });
 
@@ -40,17 +54,24 @@ export default function LeadDetailPage() {
       </Link>
 
       <Card className="mb-6">
-        <CardContent className="flex items-start justify-between gap-4 p-6">
+        <CardContent className="flex flex-wrap items-start justify-between gap-4 p-6">
           <div className="flex items-center gap-4">
             <LeadAvatar name={lead.canonical_name} className="h-14 w-14 text-lg" />
             <div>
-              <h1 className="font-serif text-2xl text-white">{lead.canonical_name}</h1>
+              <h1 className="font-serif text-2xl text-foreground">{lead.canonical_name}</h1>
               <p className="text-sm text-muted-foreground">
                 {lead.city}, {lead.state} · {lead.listing_count} listing{lead.listing_count === 1 ? "" : "s"}
               </p>
             </div>
           </div>
-          <ConfidenceBadge confidence={lead.best_confidence_score} />
+          <div className="flex items-center gap-2">
+            {lead.is_suppressed && (
+              <Badge variant="warning" title={lead.suppression_reason ?? undefined}>
+                Opted out{lead.suppression_reason ? ` · ${lead.suppression_reason.replace("_", " ")}` : ""}
+              </Badge>
+            )}
+            <ConfidenceBadge confidence={lead.best_confidence_score} />
+          </div>
         </CardContent>
       </Card>
 
@@ -105,7 +126,7 @@ export default function LeadDetailPage() {
         </Table>
       </Card>
 
-      <Card>
+      <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-base">Merge history ({lead.merge_history.length})</CardTitle>
         </CardHeader>
@@ -127,6 +148,46 @@ export default function LeadDetailPage() {
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {new Date(entry.merged_at).toLocaleString()}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Email history ({sendHistory?.length ?? 0})</CardTitle>
+        </CardHeader>
+        <Separator />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Campaign</TableHead>
+              <TableHead>Subject</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Sent at</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(!sendHistory || sendHistory.length === 0) && (
+              <TableRow>
+                <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                  No emails sent to this lead yet.
+                </TableCell>
+              </TableRow>
+            )}
+            {sendHistory?.map((entry) => (
+              <TableRow key={entry.id}>
+                <TableCell className="font-medium text-foreground">{entry.campaign_name}</TableCell>
+                <TableCell className="text-muted-foreground">{entry.subject}</TableCell>
+                <TableCell>
+                  <Badge variant={STATUS_VARIANT[entry.status] ?? "muted"} className="capitalize">
+                    {entry.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {entry.sent_at ? new Date(entry.sent_at).toLocaleString() : "—"}
                 </TableCell>
               </TableRow>
             ))}

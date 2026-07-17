@@ -6,16 +6,29 @@ import requests
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from app.audit import log_action
 from app.auth.deps import get_current_user, require_admin
 from app.campaigns.jobs import send_campaign
 from app.campaigns.suppression import suppress
+from app.campaigns.targeting import (
+    excluded_lead_ids,
+    matching_leads_query,
+    sendable_lead_count,
+    suppressed_emails_lower,
+)
 from app.db import get_db
-from app.models import Campaign, CampaignSend, EmailEvent, User
+from app.models import Campaign, CampaignExclusion, CampaignSend, EmailEvent, Lead, User
 from app.queue import campaign_queue
-from app.schemas import CampaignCreateRequest, CampaignOut, CampaignSendOut
+from app.schemas import CampaignCreateRequest, CampaignOut, CampaignSendOut, CampaignTargetLeadOut
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _to_campaign_out(db: Session, campaign: Campaign) -> CampaignOut:
+    data = CampaignOut.model_validate(campaign).model_dump()
+    data["matching_lead_count"] = sendable_lead_count(db, campaign.target_filter, campaign.id)
+    return CampaignOut(**data)
 
 
 @router.post("", response_model=CampaignOut, dependencies=[Depends(require_admin)])
@@ -33,14 +46,16 @@ def create_campaign(
         created_by=user.id,
     )
     db.add(campaign)
+    log_action(db, user.id, "campaign.create", "campaign", campaign.id, {"name": campaign.name})
     db.commit()
     db.refresh(campaign)
-    return campaign
+    return _to_campaign_out(db, campaign)
 
 
 @router.get("", response_model=list[CampaignOut], dependencies=[Depends(get_current_user)])
 def list_campaigns(db: Session = Depends(get_db)):
-    return db.query(Campaign).order_by(Campaign.created_at.desc()).all()
+    campaigns = db.query(Campaign).order_by(Campaign.created_at.desc()).all()
+    return [_to_campaign_out(db, c) for c in campaigns]
 
 
 @router.get("/{campaign_id}", response_model=CampaignOut, dependencies=[Depends(get_current_user)])
@@ -48,7 +63,75 @@ def get_campaign(campaign_id: str, db: Session = Depends(get_db)):
     campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
     if campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    return campaign
+    return _to_campaign_out(db, campaign)
+
+
+@router.get(
+    "/{campaign_id}/targets",
+    response_model=list[CampaignTargetLeadOut],
+    dependencies=[Depends(get_current_user)],
+)
+def list_campaign_targets(campaign_id: str, db: Session = Depends(get_db)):
+    campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+    if campaign is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    leads = matching_leads_query(db, campaign.target_filter).order_by(Lead.canonical_name).all()
+    excluded = excluded_lead_ids(db, campaign.id)
+    suppressed = suppressed_emails_lower(db)
+
+    return [
+        CampaignTargetLeadOut(
+            id=lead.id,
+            canonical_name=lead.canonical_name,
+            city=lead.city,
+            state=lead.state,
+            best_email=lead.best_email,
+            best_confidence_score=lead.best_confidence_score,
+            excluded=lead.id in excluded,
+            is_suppressed=lead.best_email.lower() in suppressed,
+            suppression_reason=None,
+        )
+        for lead in leads
+    ]
+
+
+@router.post("/{campaign_id}/exclude/{lead_id}", dependencies=[Depends(require_admin)])
+def exclude_campaign_lead(
+    campaign_id: str,
+    lead_id: str,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_user),
+):
+    campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+    if campaign is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    existing = (
+        db.query(CampaignExclusion)
+        .filter(CampaignExclusion.campaign_id == campaign_id, CampaignExclusion.lead_id == lead_id)
+        .first()
+    )
+    if existing is None:
+        db.add(CampaignExclusion(id=uuid.uuid4(), campaign_id=campaign_id, lead_id=lead_id))
+        log_action(db, admin.id, "campaign.exclude_lead", "campaign", campaign_id, {"lead_id": lead_id})
+        db.commit()
+    return {"status": "excluded"}
+
+
+@router.post("/{campaign_id}/include/{lead_id}", dependencies=[Depends(require_admin)])
+def include_campaign_lead(
+    campaign_id: str,
+    lead_id: str,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_user),
+):
+    db.query(CampaignExclusion).filter(
+        CampaignExclusion.campaign_id == campaign_id, CampaignExclusion.lead_id == lead_id
+    ).delete()
+    log_action(db, admin.id, "campaign.include_lead", "campaign", campaign_id, {"lead_id": lead_id})
+    db.commit()
+    return {"status": "included"}
 
 
 @router.get("/{campaign_id}/sends", response_model=list[CampaignSendOut], dependencies=[Depends(get_current_user)])
@@ -57,7 +140,11 @@ def list_campaign_sends(campaign_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/{campaign_id}/send", dependencies=[Depends(require_admin)])
-def trigger_campaign_send(campaign_id: str, db: Session = Depends(get_db)):
+def trigger_campaign_send(
+    campaign_id: str,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_user),
+):
     campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
     if campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
@@ -65,6 +152,8 @@ def trigger_campaign_send(campaign_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=409, detail="Campaign is already sending")
 
     job = campaign_queue.enqueue(send_campaign, campaign_id=campaign_id, job_timeout="2h")
+    log_action(db, admin.id, "campaign.send", "campaign", campaign_id, {"job_id": job.id})
+    db.commit()
     return {"job_id": job.id, "status": "queued"}
 
 

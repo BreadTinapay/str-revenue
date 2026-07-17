@@ -39,7 +39,7 @@ export default function LoginPage() {
         <img src={LOGO_URL} alt="STR Revenue" className="h-100 w-auto" />
 
         <div>
-          <h1 className="mb-4 font-serif text-4xl leading-tight text-white text-balance">
+          <h1 className="mb-4 font-serif text-4xl leading-tight text-foreground text-balance">
             Revenue management, done with precision.
           </h1>
           <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
@@ -64,7 +64,7 @@ export default function LoginPage() {
       <div className="col-span-1 flex items-center justify-center bg-background px-6 py-12 lg:col-span-3">
         <form onSubmit={handleSubmit} className="w-full max-w-sm">
           <img src={LOGO_URL} alt="STR Revenue" className="mb-6 h-8 w-auto lg:hidden" />
-          <h2 className="mb-1 font-serif text-2xl text-white">Welcome back</h2>
+          <h2 className="mb-1 font-serif text-2xl text-foreground">Welcome back</h2>
           <p className="mb-8 text-sm text-muted-foreground">Sign in to the lead dashboard</p>
 
           <div className="mb-4 space-y-1.5">

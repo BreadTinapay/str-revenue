@@ -3,7 +3,50 @@
 @tailwind utilities;
 
 @layer base {
+  /* Light theme — matches strrevenueco.com: white section backgrounds,
+     dark navy (#000926) headings/body text, brand blue (#01A4EF) accents. */
   :root {
+    color-scheme: light;
+
+    --background: 0 0% 100%;
+    --foreground: 226 100% 7%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 226 100% 7%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 226 100% 7%;
+
+    --primary: 199 98% 47%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 226 60% 15%;
+
+    --muted: 210 30% 95%;
+    --muted-foreground: 215 15% 40%;
+
+    --accent: 199 90% 95%;
+    --accent-foreground: 226 60% 15%;
+
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 65% 35%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 40%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 210 25% 88%;
+    --input: 210 25% 88%;
+    --ring: 199 98% 47%;
+
+    --radius: 0.85rem;
+  }
+
+  /* Dark theme — original palette, toggled via a `dark` class on <html>. */
+  .dark {
     color-scheme: dark;
 
     --background: 217 68% 6%;
@@ -39,17 +82,12 @@
     --border: 221 45% 17%;
     --input: 221 45% 18%;
     --ring: 199 98% 47%;
-
-    --radius: 0.85rem;
   }
 }
 
 @layer base {
   * {
     @apply border-border;
-  }
-  html {
-    color-scheme: dark;
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;

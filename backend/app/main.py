@@ -2,7 +2,19 @@ from fastapi import FastAPI
 
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import analytics, auth, campaigns, discovery, enrichment, leads, unsubscribe
+from app.api.routes import (
+    analytics,
+    audit_log,
+    auth,
+    campaigns,
+    discovery,
+    enrichment,
+    geo,
+    leads,
+    settings,
+    unsubscribe,
+    users,
+)
 
 app = FastAPI(title="STR Revenue Platform", version="0.1.0")
 
@@ -21,6 +33,10 @@ app.include_router(leads.router, prefix="/leads", tags=["leads"])
 app.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 app.include_router(campaigns.router, prefix="/campaigns", tags=["campaigns"])
 app.include_router(unsubscribe.router, prefix="/unsubscribe", tags=["unsubscribe"])
+app.include_router(users.router, prefix="/users", tags=["users"])
+app.include_router(audit_log.router, prefix="/audit-log", tags=["audit-log"])
+app.include_router(settings.router, prefix="/settings", tags=["settings"])
+app.include_router(geo.router, prefix="/geo", tags=["geo"])
 
 
 @app.get("/health")

@@ -14,14 +14,30 @@ import { Separator } from "../components/ui/separator";
 import { Skeleton } from "../components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { fetchAnalyticsOverview } from "../lib/api";
+import { useTheme } from "../lib/theme";
 
 const SERIES_BLUE = "#01A4EF";
-const GRIDLINE = "hsl(221 45% 17%)";
-const MUTED = "hsl(215 20% 65%)";
-const TOOLTIP_BG = "hsl(220 55% 10%)";
-const TOOLTIP_BORDER = "hsl(221 45% 20%)";
+
+const CHART_COLORS = {
+  dark: {
+    gridline: "hsl(221 45% 17%)",
+    muted: "hsl(215 20% 65%)",
+    tooltipBg: "hsl(220 55% 10%)",
+    tooltipBorder: "hsl(221 45% 20%)",
+    tooltipText: "hsl(210 40% 98%)",
+  },
+  light: {
+    gridline: "hsl(210 25% 88%)",
+    muted: "hsl(215 15% 40%)",
+    tooltipBg: "hsl(0 0% 100%)",
+    tooltipBorder: "hsl(210 25% 88%)",
+    tooltipText: "hsl(226 100% 7%)",
+  },
+};
 
 export default function AnalyticsPage() {
+  const { theme } = useTheme();
+  const colors = CHART_COLORS[theme];
   const { data, isLoading, isError } = useQuery({
     queryKey: ["analytics-overview"],
     queryFn: fetchAnalyticsOverview,
@@ -47,7 +63,7 @@ export default function AnalyticsPage() {
   return (
     <div className="animate-fade-in">
       <div className="mb-6">
-        <h1 className="font-serif text-2xl text-white">Analytics</h1>
+        <h1 className="font-serif text-2xl text-foreground">Analytics</h1>
         <p className="text-sm text-muted-foreground">Discovery volume, enrichment quality, and market coverage</p>
       </div>
 
@@ -71,15 +87,20 @@ export default function AnalyticsPage() {
             <div style={{ width: "100%", height: 260 }}>
               <ResponsiveContainer>
                 <LineChart data={data.leads_over_time} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-                  <CartesianGrid stroke={GRIDLINE} vertical={false} />
-                  <XAxis dataKey="day" stroke={MUTED} tick={{ fill: MUTED, fontSize: 12 }} />
-                  <YAxis allowDecimals={false} stroke={MUTED} tick={{ fill: MUTED, fontSize: 12 }} width={32} />
+                  <CartesianGrid stroke={colors.gridline} vertical={false} />
+                  <XAxis dataKey="day" stroke={colors.muted} tick={{ fill: colors.muted, fontSize: 12 }} />
+                  <YAxis
+                    allowDecimals={false}
+                    stroke={colors.muted}
+                    tick={{ fill: colors.muted, fontSize: 12 }}
+                    width={32}
+                  />
                   <Tooltip
                     contentStyle={{
-                      background: TOOLTIP_BG,
-                      border: `1px solid ${TOOLTIP_BORDER}`,
+                      background: colors.tooltipBg,
+                      border: `1px solid ${colors.tooltipBorder}`,
                       borderRadius: 8,
-                      color: "#ffffff",
+                      color: colors.tooltipText,
                       fontSize: 12,
                     }}
                   />
@@ -145,7 +166,7 @@ function StatCard({
           <Icon className="h-4 w-4" />
         </div>
         <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="font-serif text-2xl text-white" style={{ fontVariantNumeric: "tabular-nums" }}>
+        <p className="font-serif text-2xl text-foreground" style={{ fontVariantNumeric: "tabular-nums" }}>
           {value}
         </p>
       </CardContent>
