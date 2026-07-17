@@ -376,9 +376,10 @@ export function fetchStates(): Promise<UsState[]> {
   return request(`/geo/states`);
 }
 
-export function fetchCities(state: string, q?: string): Promise<string[]> {
+export function fetchCities(state: string, q?: string, offset?: number): Promise<{ cities: string[]; total: number }> {
   const params = new URLSearchParams({ state });
   if (q) params.set("q", q);
+  if (offset && offset > 0) params.set("offset", String(offset));
   return request(`/geo/cities?${params.toString()}`);
 }
 

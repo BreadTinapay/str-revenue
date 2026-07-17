@@ -15,6 +15,7 @@ def get_states():
 def get_cities(
     state: str = Query(..., min_length=2, max_length=2),
     q: str | None = Query(default=None),
-    limit: int = Query(default=200, le=500),
+    limit: int = Query(default=50, le=200),
+    offset: int = Query(default=0, ge=0),
 ):
-    return list_cities(state, q, limit)
+    return list_cities(state, q, limit, offset)

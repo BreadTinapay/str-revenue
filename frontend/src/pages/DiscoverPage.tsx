@@ -1,15 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Loader2, MapPin, Plus, X, XCircle } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import CityPicker from "../components/CityPicker";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Separator } from "../components/ui/separator";
 import {
-  fetchCities,
   fetchStates,
   getDedupJob,
   getDiscoveryJob,
@@ -45,28 +44,12 @@ export default function DiscoverPage() {
   const navigate = useNavigate();
   const [stateCode, setStateCode] = useState("");
   const [city, setCity] = useState("");
-  const [cityQuery, setCityQuery] = useState("");
   const [queue, setQueue] = useState<MarketEntry[]>([]);
   const [results, setResults] = useState<MarketResult[]>([]);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
-  const [debouncedCityQuery, setDebouncedCityQuery] = useState("");
-
-  useEffect(() => {
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setDebouncedCityQuery(cityQuery), 300);
-    return () => clearTimeout(debounceRef.current);
-  }, [cityQuery]);
-
   const { data: states } = useQuery({ queryKey: ["us-states"], queryFn: fetchStates });
-
-  const { data: cityOptions } = useQuery({
-    queryKey: ["us-cities", stateCode, debouncedCityQuery],
-    queryFn: () => fetchCities(stateCode, debouncedCityQuery || undefined),
-    enabled: Boolean(stateCode),
-  });
 
   const stateName = useMemo(() => states?.find((s) => s.code === stateCode)?.name ?? "", [states, stateCode]);
 
@@ -85,7 +68,6 @@ export default function DiscoverPage() {
     setError(null);
     setQueue((q) => [...q, { city: city.trim(), state: stateCode }]);
     setCity("");
-    setCityQuery("");
   }
 
   function removeFromQueue(index: number) {
@@ -173,23 +155,13 @@ export default function DiscoverPage() {
           </div>
           <div className="w-full space-y-1.5 sm:w-64">
             <Label>City</Label>
-            <div className="relative">
-              <MapPin className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                list="city-suggestions"
-                placeholder={stateName ? `Any city in ${stateName}` : "Pick a state first"}
-                className="pl-8"
-                value={city}
-                onChange={(e) => {
-                  setCity(e.target.value);
-                  setCityQuery(e.target.value);
-                }}
-                disabled={running || !stateCode}
-              />
-              <datalist id="city-suggestions">
-                {cityOptions?.map((c) => <option key={c} value={c} />)}
-              </datalist>
-            </div>
+            <CityPicker
+              stateCode={stateCode}
+              stateName={stateName}
+              value={city}
+              onChange={setCity}
+              disabled={running || !stateCode}
+            />
           </div>
           <Button onClick={addToQueue} disabled={running} variant="secondary">
             <Plus className="h-4 w-4" />
