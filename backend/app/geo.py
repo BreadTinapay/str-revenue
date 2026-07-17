@@ -19,7 +19,7 @@ def list_states() -> list[dict]:
     )
 
 
-def list_cities(state_code: str, query: str | None = None, limit: int = 50) -> list[str]:
+def list_cities(state_code: str, query: str | None = None, limit: int = 200) -> list[str]:
     data = _load()
     entry = data.get(state_code.upper())
     if entry is None:
@@ -27,5 +27,5 @@ def list_cities(state_code: str, query: str | None = None, limit: int = 50) -> l
     cities = entry["cities"]
     if query:
         query_lower = query.lower()
-        cities = [c for c in cities if c.lower().startswith(query_lower)]
+        cities = [c for c in cities if query_lower in c.lower()]
     return cities[:limit]
