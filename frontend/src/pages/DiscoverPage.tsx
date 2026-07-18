@@ -3,10 +3,10 @@ import { CheckCircle2, Loader2, MapPin, Plus, X, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CityPicker from "../components/CityPicker";
+import StatePicker from "../components/StatePicker";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Label } from "../components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Separator } from "../components/ui/separator";
 import {
   fetchStates,
@@ -140,18 +140,12 @@ export default function DiscoverPage() {
         <CardContent className="flex flex-wrap items-end gap-3 p-4">
           <div className="w-full space-y-1.5 sm:w-56">
             <Label>State</Label>
-            <Select value={stateCode} onValueChange={(v) => { setStateCode(v); setCity(""); setCityQuery(""); }} disabled={running}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a state" />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                {states?.map((s) => (
-                  <SelectItem key={s.code} value={s.code}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <StatePicker
+              states={states ?? []}
+              value={stateCode}
+              onChange={(v) => { setStateCode(v); setCity(""); }}
+              disabled={running}
+            />
           </div>
           <div className="w-full space-y-1.5 sm:w-64">
             <Label>City</Label>
