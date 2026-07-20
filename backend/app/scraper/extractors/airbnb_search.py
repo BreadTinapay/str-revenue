@@ -41,7 +41,15 @@ class AirbnbSearchExtractor(ListingExtractor):
         results: list[DiscoveredListing] = []
 
         with sync_playwright() as p:
-            launch_kwargs = {"headless": True, "args": ["--no-sandbox", "--disable-setuid-sandbox"]}
+            launch_kwargs = {
+                "headless": True,
+                "args": [
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-dev-shm-usage",
+                ],
+            }
             if settings.scraper_proxy_url:
                 launch_kwargs["proxy"] = {"server": settings.scraper_proxy_url}
 
@@ -52,8 +60,15 @@ class AirbnbSearchExtractor(ListingExtractor):
                     "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
                 ),
                 locale="en-US",
+                viewport={"width": 1920, "height": 1080},
             )
             page = context.new_page()
+            page.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+                Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+                window.chrome = { runtime: {} };
+            """)
 
             try:
                 for page_num in range(max_pages):
@@ -62,7 +77,7 @@ class AirbnbSearchExtractor(ListingExtractor):
                         url += f"&items_offset={page_num * 20}"
 
                     jittered_delay()
-                    page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                    page.goto(url, wait_until="domcontentloaded", timeout=60000)
 
                     # Listing cards render client-side after hydration, well after
                     # domcontentloaded — checking for a block *before* waiting for
@@ -185,7 +200,7 @@ def _extract_card(card, city: str, state: str, source_url: str) -> DiscoveredLis
 def _fetch_host_name(context, listing_id: str) -> str | None:
     detail_page = context.new_page()
     try:
-        detail_page.goto(ROOM_URL.format(listing_id=listing_id), wait_until="domcontentloaded", timeout=30000)
+        detail_page.goto(ROOM_URL.format(listing_id=listing_id), wait_until="domcontentloaded", timeout=60000)
         detail_page.wait_for_timeout(2000)
         content = detail_page.content()
         match = HOSTED_BY_PATTERN.search(content)

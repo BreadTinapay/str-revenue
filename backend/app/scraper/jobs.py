@@ -2,7 +2,7 @@ import logging
 
 from app.db import SessionLocal
 from app.models import MarketListing
-from app.scraper.extractors.airbnb_search import AirbnbSearchExtractor
+from app.scraper.extractors.searxng_discovery import SearxngDiscoveryExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ def run_discovery(city: str, state: str, max_pages: int = 3) -> int:
             .all()
         }
 
-        extractor = AirbnbSearchExtractor(known_listing_ids=known_listing_ids)
+        extractor = SearxngDiscoveryExtractor(known_listing_ids=known_listing_ids)
         discovered = extractor.discover(city=city, state=state, max_pages=max_pages)
 
         written = 0
