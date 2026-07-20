@@ -28,14 +28,14 @@ class SearxngDiscoveryExtractor(ListingExtractor):
         seen_ids: set[str] = set()
 
         queries = [
-            f"airbnb.com/rooms {city} {state}",
-            f"airbnb {city} {state} rental for rent",
-            f"airbnb.com rooms {city} {state} entire place",
-            f"site:airbnb.com/rooms/ {city} {state}",
-            f"airbnb {city} {state} home rental",
-            f"airbnb {city} {state} house for rent",
-            f"airbnb {city} {state} cabin cottage",
-            f"airbnb {city} {state} apartment condo",
+            f'"airbnb.com/rooms" {city} {state}',
+            f'airbnb.com/rooms/ {city} {state} house cabin',
+            f'"airbnb.com/rooms" {city} {state} apartment',
+            f'airbnb.com/rooms {city} {state} vacation rental',
+            f'"airbnb.com/rooms" {city} {state} guest suite',
+            f'airbnb.com/rooms {city} {state} room private',
+            f'"airbnb.com/rooms" {city} {state} stay',
+            f'airbnb.com/rooms {city} {state} downtown',
         ]
 
         for page_num in range(max_pages):
@@ -94,7 +94,12 @@ class SearxngDiscoveryExtractor(ListingExtractor):
 def _search_searxng(query: str, num: int = 20) -> list[dict]:
     resp = requests.get(
         SEARXNG_ENDPOINT,
-        params={"q": query, "format": "json", "categories": "general"},
+        params={
+            "q": query,
+            "format": "json",
+            "categories": "general",
+            "engines": "google,bing",
+        },
         timeout=30,
     )
     if resp.status_code == 429:
