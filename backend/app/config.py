@@ -7,6 +7,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://str_revenue:str_revenue@localhost:5432/str_revenue"
     redis_url: str = "redis://localhost:6379/0"
 
+    # CORS
+    cors_origins: str = "http://localhost:5173"
+
     # Rate limiting / scraper behavior
     scraper_min_delay_seconds: float = 3.0
     scraper_max_delay_seconds: float = 9.0
@@ -34,6 +37,10 @@ class Settings(BaseSettings):
     aws_secret_access_key: str | None = None
 
     resend_api_key: str | None = None
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
 
 settings = Settings()

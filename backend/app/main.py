@@ -15,12 +15,13 @@ from app.api.routes import (
     unsubscribe,
     users,
 )
+from app.config import settings as app_settings
 
 app = FastAPI(title="STR Revenue Platform", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=app_settings.cors_origin_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
