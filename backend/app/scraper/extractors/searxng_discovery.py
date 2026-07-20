@@ -28,15 +28,19 @@ class SearxngDiscoveryExtractor(ListingExtractor):
         seen_ids: set[str] = set()
 
         queries = [
+            f"airbnb.com/rooms {city} {state}",
+            f"airbnb {city} {state} rental for rent",
+            f"airbnb.com rooms {city} {state} entire place",
             f"site:airbnb.com/rooms/ {city} {state}",
-            f"airbnb {city} {state} listing",
-            f"site:airbnb.com {city} {state} vacation rental",
+            f"airbnb {city} {state} home rental",
+            f"airbnb {city} {state} house for rent",
+            f"airbnb {city} {state} cabin cottage",
+            f"airbnb {city} {state} apartment condo",
         ]
 
         for page_num in range(max_pages):
-            query = queries[page_num % len(queries)]
-            if page_num > 0:
-                query += f" page {page_num + 1}"
+            query_idx = page_num % len(queries)
+            query = queries[query_idx]
 
             jittered_delay()
 
@@ -91,7 +95,7 @@ def _search_searxng(query: str, num: int = 20) -> list[dict]:
     resp = requests.get(
         SEARXNG_ENDPOINT,
         params={"q": query, "format": "json", "categories": "general"},
-        timeout=15,
+        timeout=30,
     )
     if resp.status_code == 429:
         logger.warning("SearXNG rate-limited (429)")

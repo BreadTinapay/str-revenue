@@ -15,6 +15,18 @@ services:
       - ./searxng:/etc/searxng
     environment:
       - BASE_URL=http://localhost:8080/
+    depends_on:
+      tor:
+        condition: service_healthy
+
+  tor:
+    image: dperson/torproxy:latest
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9050"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   api:
     build:

@@ -12,3 +12,46 @@ search:
   formats:
     - html
     - json
+
+outgoing:
+  proxies:
+    all://:
+      - socks5h://tor:9050
+  using_tor_proxy: true
+  request_timeout: 10.0
+
+engines:
+  - name: google
+    engine: google
+    shortcut: go
+    disabled: false
+
+  - name: bing
+    engine: bing
+    shortcut: bi
+    disabled: false
+
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
+    disabled: false
+
+  - name: brave
+    engine: brave
+    shortcut: br
+    disabled: false
+
+  - name: qwant
+    engine: qwant
+    shortcut: qw
+    disabled: false
+
+  - name: mojeek
+    engine: mojeek
+    shortcut: mj
+    disabled: false
+
+  - name: startpage
+    engine: startpage
+    shortcut: sp
+    disabled: false
