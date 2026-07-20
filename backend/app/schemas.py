@@ -71,7 +71,7 @@ class TokenOut(BaseModel):
 class DiscoveryRunRequest(BaseModel):
     city: str
     state: str
-    max_pages: int = 3
+    max_pages: int = 5
 
 
 class EnrichmentRunRequest(BaseModel):

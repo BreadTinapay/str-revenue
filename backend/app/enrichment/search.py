@@ -68,7 +68,7 @@ def search(query: str, num: int = 5) -> list[SearchResult]:
     resp = requests.get(
         SEARXNG_ENDPOINT,
         params={"q": query, "format": "json", "categories": "general"},
-        timeout=15,
+        timeout=30,
     )
 
     if resp.status_code == 429:
