@@ -41,7 +41,7 @@ class AirbnbSearchExtractor(ListingExtractor):
         results: list[DiscoveredListing] = []
 
         with sync_playwright() as p:
-            launch_kwargs = {"headless": True}
+            launch_kwargs = {"headless": True, "args": ["--no-sandbox", "--disable-setuid-sandbox"]}
             if settings.scraper_proxy_url:
                 launch_kwargs["proxy"] = {"server": settings.scraper_proxy_url}
 
